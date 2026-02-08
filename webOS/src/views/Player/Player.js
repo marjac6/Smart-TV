@@ -1020,6 +1020,10 @@ const Player = ({item, resume, initialAudioIndex, initialSubtitleIndex, onEnded,
 		setError(errorMessage);
 	}, [hasTriedTranscode, playMethod, item, selectedQuality, settings.maxBitrate]);
 
+	const handleImageError = useCallback((e) => {
+		e.target.style.display = 'none';
+	}, []);
+
 	const handleBack = useCallback(async () => {
 		cancelNextEpisodeCountdown();
 		const currentPos = videoRef.current
@@ -1090,6 +1094,10 @@ const Player = ({item, resume, initialAudioIndex, initialSubtitleIndex, onEnded,
 		if (isNaN(index)) return;
 		setSelectedAudioIndex(index);
 		closeModal();
+
+		// Reset fallback flag so the DirectPlay→Transcode fallback can trigger again
+		// if the new audio track also fails at the decoder level.
+		setHasTriedTranscode(false);
 
 		// For both Transcode and DirectPlay, re-fetch playback info when switching audio.
 		// This ensures unsupported codecs (e.g. DTS on webOS 5+) trigger a transcode
@@ -1491,9 +1499,7 @@ const Player = ({item, resume, initialAudioIndex, initialSubtitleIndex, onEnded,
 								src={getImageUrl(getServerUrl(), nextEpisode.Id, 'Primary', {maxWidth: 400, quality: 80})}
 								alt={nextEpisode.Name}
 								className={css.nextThumbnailImg}
-								onError={(e) => {
-									e.target.style.display = 'none';
-								}}
+								onError={handleImageError}
 							/>
 							<div className={css.nextThumbnailGradient} />
 						</div>
