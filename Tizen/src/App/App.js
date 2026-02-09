@@ -294,7 +294,22 @@ const AppContent = (props) => {
 			if (isBackKey(e)) {
 				e.preventDefault();
 
-				if (panelIndex === PANELS.BROWSE || panelIndex === PANELS.LOGIN) {
+				if (panelIndex === PANELS.LOGIN) {
+					return;
+				}
+				// On home screen, exit the app
+				if (panelIndex === PANELS.BROWSE) {
+					if (typeof tizen !== 'undefined' && tizen.application) {
+						if (isTizen() && typeof window.runSmartViewUpdate === 'function') {
+							window.runSmartViewUpdate().then(function () {
+								tizen.application.getCurrentApplication().exit();
+							}).catch(function () {
+								tizen.application.getCurrentApplication().exit();
+							});
+						} else {
+							tizen.application.getCurrentApplication().exit();
+						}
+					}
 					return;
 				}
 				if (panelIndex === PANELS.PLAYER || panelIndex === PANELS.SETTINGS) {
