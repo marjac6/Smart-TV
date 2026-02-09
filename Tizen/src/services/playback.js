@@ -402,13 +402,41 @@ export const getTrickplayInfo = async (itemId) => {
 };
 
 export const getMediaSegments = async (itemId) => {
+	const segments = {
+		introStart: null,
+		introEnd: null,
+		creditsStart: null
+	};
+
+	// Try the Media Segments API first
+	try {
+		const serverUrl = jellyfinApi.getServerUrl();
+		const apiKey = jellyfinApi.getApiKey();
+		const response = await fetch(`${serverUrl}/MediaSegments/${itemId}?api_key=${apiKey}`);
+		if (response.ok) {
+			const data = await response.json();
+			if (data.Items && data.Items.length > 0) {
+				for (const seg of data.Items) {
+					const type = seg.Type?.toLowerCase();
+					if (type === 'intro') {
+						segments.introStart = seg.StartTicks;
+						segments.introEnd = seg.EndTicks;
+					} else if (type === 'outro' || type === 'credits') {
+						segments.creditsStart = seg.StartTicks;
+					}
+				}
+				if (segments.introStart !== null || segments.creditsStart !== null) {
+					return segments;
+				}
+			}
+		}
+	} catch (e) {
+		console.warn('[Playback] Media Segments API not available, falling back to chapters:', e.message);
+	}
+
+	// Fallback: check chapter markers
 	try {
 		const item = await jellyfinApi.api.getItem(itemId);
-		const segments = {
-			introStart: null,
-			introEnd: null,
-			creditsStart: null
-		};
 
 		if (item.Chapters) {
 			const introIndex = item.Chapters.findIndex(c =>
@@ -432,11 +460,11 @@ export const getMediaSegments = async (itemId) => {
 				segments.creditsStart = creditsChapter.StartPositionTicks;
 			}
 		}
-
-		return segments;
 	} catch (e) {
-		return {introStart: null, introEnd: null, creditsStart: null};
+		console.warn('[Playback] Failed to fetch chapters for segments:', e.message);
 	}
+
+	return segments;
 };
 
 export const getNextEpisode = async (item) => {
