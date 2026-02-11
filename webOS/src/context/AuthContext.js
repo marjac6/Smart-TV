@@ -29,6 +29,10 @@ export const AuthProvider = ({children}) => {
 	const [isAddingServer, setIsAddingServer] = useState(false);
 	const [pendingServer, setPendingServer] = useState(null);
 
+	// Last known server (for auto-login disabled flow)
+	const [lastServerUrl, setLastServerUrl] = useState(null);
+	const [lastServerName, setLastServerName] = useState(null);
+
 	// Load multi-server data
 	const loadServers = useCallback(async () => {
 		try {
@@ -56,34 +60,48 @@ export const AuthProvider = ({children}) => {
 			// Load multi-server data
 			const {active} = await loadServers();
 
+			// Check auto-login setting
+			const storedSettings = await getFromStorage('settings');
+			const autoLogin = storedSettings?.autoLogin !== false; // default true
+
 			// If we have an active server, use it
 			if (active) {
-				jellyfinApi.setServer(active.url);
-				jellyfinApi.setAuth(active.userId, active.accessToken);
-				setServerUrl(active.url);
-				setServerName(active.name);
-				setAccessToken(active.accessToken);
+				// Always remember the last server for the login screen
+				setLastServerUrl(active.url);
+				setLastServerName(active.name);
 
-				// Try to get user info
-				try {
-					const userInfo = await jellyfinApi.api.getUserConfiguration();
-					setUser(userInfo);
-				} catch (e) {
-					// If we can't get user info, use what we have
-					setUser({Id: active.userId, Name: active.username});
+				if (autoLogin) {
+					jellyfinApi.setServer(active.url);
+					jellyfinApi.setAuth(active.userId, active.accessToken);
+					setServerUrl(active.url);
+					setServerName(active.name);
+					setAccessToken(active.accessToken);
+
+					// Try to get user info
+					try {
+						const userInfo = await jellyfinApi.api.getUserConfiguration();
+						setUser(userInfo);
+					} catch (e) {
+						// If we can't get user info, use what we have
+						setUser({Id: active.userId, Name: active.username});
+					}
+
+					setIsAuthenticated(true);
 				}
-
-				setIsAuthenticated(true);
 			} else {
 				// Fallback to old auth format
 				const storedAuth = await getFromStorage('auth');
 				if (storedAuth) {
-					jellyfinApi.setServer(storedAuth.serverUrl);
-					jellyfinApi.setAuth(storedAuth.userId, storedAuth.token);
-					setServerUrl(storedAuth.serverUrl);
-					setAccessToken(storedAuth.token);
-					setUser(storedAuth.user);
-					setIsAuthenticated(true);
+					setLastServerUrl(storedAuth.serverUrl);
+
+					if (autoLogin) {
+						jellyfinApi.setServer(storedAuth.serverUrl);
+						jellyfinApi.setAuth(storedAuth.userId, storedAuth.token);
+						setServerUrl(storedAuth.serverUrl);
+						setAccessToken(storedAuth.token);
+						setUser(storedAuth.user);
+						setIsAuthenticated(true);
+					}
 				}
 			}
 
@@ -390,6 +408,10 @@ export const AuthProvider = ({children}) => {
 		cancelAddServerFlow,
 		completeAddServerFlow,
 
+		// Last known server (for login screen when auto-login disabled)
+		lastServerUrl,
+		lastServerName,
+
 		// Actions
 		login,
 		loginWithToken,
@@ -420,6 +442,8 @@ export const AuthProvider = ({children}) => {
 		startAddServerFlow,
 		cancelAddServerFlow,
 		completeAddServerFlow,
+		lastServerUrl,
+		lastServerName,
 		login,
 		loginWithToken,
 		logout,

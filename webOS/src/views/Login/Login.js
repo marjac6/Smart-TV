@@ -27,7 +27,9 @@ const Login = ({
 		isAddingServer: isAddingServerContext,
 		pendingServer: pendingServerContext,
 		completeAddServerFlow,
-		cancelAddServerFlow
+		cancelAddServerFlow,
+		lastServerUrl: storedServerUrl,
+		lastServerName: storedServerName
 	} = useAuth();
 
 	// Determine if we're in "add server" mode (either adding new server or adding user to current)
@@ -36,8 +38,8 @@ const Login = ({
 	const pendingServer = pendingServerInfo || pendingServerContext;
 
 	const [step, setStep] = useState(isAddingToExisting ? 'connecting' : 'server');
-	const [serverUrl, setServerUrl] = useState(isAddingToExisting ? currentServerUrl : (pendingServer?.url || ''));
-	const [serverInfo, setServerInfo] = useState(isAddingToExisting ? {ServerName: currentServerName} : (pendingServer ? {ServerName: pendingServer.name} : null));
+	const [serverUrl, setServerUrl] = useState(isAddingToExisting ? currentServerUrl : (pendingServer?.url || storedServerUrl || ''));
+	const [serverInfo, setServerInfo] = useState(isAddingToExisting ? {ServerName: currentServerName} : (pendingServer ? {ServerName: pendingServer.name} : (storedServerName ? {ServerName: storedServerName} : null)));
 	const [publicUsers, setPublicUsers] = useState([]);
 	const [selectedUser, setSelectedUser] = useState(null);
 	const [username, setUsername] = useState('');
@@ -87,9 +89,9 @@ const Login = ({
 		}
 	}, [serverUrl]);
 
-	// If we have a pending server OR adding user to existing, auto-connect
+	// If we have a pending server, adding user to existing, or a stored server (auto-login disabled), auto-connect
 	useEffect(() => {
-		if ((pendingServer?.url && step === 'server') || (isAddingToExisting && step === 'connecting')) {
+		if ((pendingServer?.url && step === 'server') || (isAddingToExisting && step === 'connecting') || (storedServerUrl && !isAuthenticated && !isAddingServer && !isAddingToExisting && step === 'server')) {
 			handleConnect();
 		}
 	// eslint-disable-next-line react-hooks/exhaustive-deps

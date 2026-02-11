@@ -827,6 +827,7 @@ const Settings = ({onBack, onLibrariesChanged}) => {
 					() => updateSetting('clockDisplay', settings.clockDisplay === '12-hour' ? '24-hour' : '12-hour'),
 					'setting-clockDisplay'
 				)}
+				{renderToggleItem('Auto Login', 'Automatically sign in on app launch', 'autoLogin')}
 			</div>
 			{hasMultipleServers && (
 				<div className={css.settingsGroup}>
