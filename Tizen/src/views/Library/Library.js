@@ -348,7 +348,7 @@ loading="lazy"
 </div>
 </SpottableDiv>
 );
-}, [effectiveServerUrl, handleItemClick, items.length, totalCount, isLoading, loadItems]);
+}, [effectiveServerUrl, handleItemClick, items.length, totalCount, isLoading, loadItems, isMusicLibrary]);
 
 const currentSort = SORT_OPTIONS.find(o => o.key === sortBy);
 const currentFilter = FILTER_OPTIONS.find(o => o.key === filter);

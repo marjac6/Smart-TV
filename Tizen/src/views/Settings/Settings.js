@@ -754,6 +754,7 @@ const Settings = ({onBack, onLogout, onAddServer, onAddUser, onLibrariesChanged}
 					() => updateSetting('clockDisplay', settings.clockDisplay === '12-hour' ? '24-hour' : '12-hour'),
 					'setting-clockDisplay'
 				)}
+				{renderToggleItem('Auto Login', 'Automatically sign in on app launch', 'autoLogin')}
 			</div>
 			<div className={css.settingsGroup}>
 				<h2>Navigation Bar</h2>
