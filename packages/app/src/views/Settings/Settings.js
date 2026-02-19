@@ -1166,14 +1166,16 @@ const Settings = ({onBack, onLibrariesChanged}) => {
 				<h2>Application</h2>
 				<SpottableDiv className={css.infoItem} tabIndex={0}>
 					<span className={css.infoLabel}>App Version</span>
-					<span className={css.infoValue}>2.0.0</span>
+					<span className={css.infoValue}>{process.env.REACT_APP_VERSION || '0.0.0'}</span>
 				</SpottableDiv>
 				<SpottableDiv className={css.infoItem} tabIndex={0}>
 					<span className={css.infoLabel}>Platform</span>
 					<span className={css.infoValue}>
-						{capabilities?.webosVersionDisplay
-							? `webOS ${capabilities.webosVersionDisplay}`
-							: 'webOS'}
+						{capabilities?.tizenVersionDisplay
+							? 'Tizen'
+							: capabilities?.webosVersionDisplay
+								? 'webOS'
+								: 'Unknown'}
 					</span>
 				</SpottableDiv>
 			</div>
@@ -1197,6 +1199,16 @@ const Settings = ({onBack, onLibrariesChanged}) => {
 						<span className={css.infoLabel}>Model</span>
 						<span className={css.infoValue}>{capabilities.modelName || 'Unknown'}</span>
 					</SpottableDiv>
+					{(capabilities.tizenVersionDisplay || capabilities.webosVersionDisplay) && (
+						<SpottableDiv className={css.infoItem} tabIndex={0}>
+							<span className={css.infoLabel}>
+								{capabilities.tizenVersionDisplay ? 'Tizen Version' : 'webOS Version'}
+							</span>
+							<span className={css.infoValue}>
+								{capabilities.tizenVersionDisplay || capabilities.webosVersionDisplay}
+							</span>
+						</SpottableDiv>
+					)}
 					{capabilities.firmwareVersion && (
 						<SpottableDiv className={css.infoItem} tabIndex={0}>
 							<span className={css.infoLabel}>Firmware</span>
