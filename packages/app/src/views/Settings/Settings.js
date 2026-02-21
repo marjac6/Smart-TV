@@ -9,8 +9,6 @@ import {useAuth} from '../../context/AuthContext';
 import {useSettings, DEFAULT_HOME_ROWS} from '../../context/SettingsContext';
 import {useJellyseerr} from '../../context/JellyseerrContext';
 import {useDeviceInfo} from '../../hooks/useDeviceInfo';
-import JellyseerrIcon from '../../components/icons/JellyseerrIcon';
-import SeerrIcon from '../../components/icons/SeerrIcon';
 import serverLogger from '../../services/serverLogger';
 import connectionPool from '../../services/connectionPool';
 import {isBackKey, KEYS} from '../../utils/keys';
@@ -73,7 +71,6 @@ const BASE_CATEGORIES = [
 	{id: 'playback', label: 'Playback', Icon: IconPlayback},
 	{id: 'display', label: 'Display', Icon: IconDisplay},
 	{id: 'plugin', label: 'Plugin', Icon: IconPlugin},
-	{id: 'jellyseerr', label: 'Jellyseerr', Icon: JellyseerrIcon},
 	{id: 'about', label: 'About', Icon: IconAbout}
 ];
 
@@ -237,16 +234,7 @@ const Settings = ({onBack, onLibrariesChanged}) => {
 	const isSeerr = jellyseerr.isMoonfin && jellyseerr.variant === 'seerr';
 	const seerrLabel = isSeerr ? (jellyseerr.displayName || 'Seerr') : 'Jellyseerr';
 
-	const categories = BASE_CATEGORIES.map(cat => {
-		if (cat.id === 'jellyseerr') {
-			return {
-				...cat,
-				label: seerrLabel,
-				Icon: isSeerr ? SeerrIcon : JellyseerrIcon
-			};
-		}
-		return cat;
-	});
+	const categories = BASE_CATEGORIES;
 
 	const [activeCategory, setActiveCategory] = useState('general');
 	const [showHomeRowsModal, setShowHomeRowsModal] = useState(false);
@@ -706,16 +694,9 @@ const Settings = ({onBack, onLibrariesChanged}) => {
 				{renderSettingItem('Configure Home Rows', 'Customize which rows appear on home screen',
 					'Edit...', openHomeRowsModal, 'setting-homeRows'
 				)}
-			</div>
-			<div className={css.settingsGroup}>
-				<h2>Libraries</h2>
 				{renderSettingItem('Hide Libraries', 'Choose which libraries to hide (syncs across all Jellyfin clients)',
 					'Edit...', openLibraryModal, 'setting-hideLibraries'
 				)}
-			</div>
-			<div className={css.settingsGroup}>
-				<h2>Debugging</h2>
-				{renderToggleItem('Server Logging', 'Send logs to Jellyfin server for troubleshooting', 'serverLogging')}
 			</div>
 		</div>
 	);
@@ -738,6 +719,9 @@ const Settings = ({onBack, onLibrariesChanged}) => {
 					() => openOptionDialog('Seek Step', SEEK_STEP_OPTIONS, 'seekStep'),
 					'setting-seekStep'
 				)}
+				<div className={css.divider} />
+				{renderToggleItem('Prefer Transcoding', 'Request transcoded streams when available', 'preferTranscode')}
+				{renderToggleItem('Force Direct Play', 'Skip codec checks and always attempt DirectPlay (debug)', 'forceDirectPlay')}
 			</div>
 			<div className={css.settingsGroup}>
 				<h2>Subtitles</h2>
@@ -855,11 +839,6 @@ const Settings = ({onBack, onLibrariesChanged}) => {
 					/>
 				</div>
 			</div>
-			<div className={css.settingsGroup}>
-				<h2>Transcoding</h2>
-				{renderToggleItem('Prefer Transcoding', 'Request transcoded streams when available', 'preferTranscode')}
-				{renderToggleItem('Force Direct Play', 'Skip codec checks and always attempt DirectPlay (debug)', 'forceDirectPlay')}
-			</div>
 		</div>
 	);
 
@@ -893,20 +872,20 @@ const Settings = ({onBack, onLibrariesChanged}) => {
 				)}
 			</div>
 			<div className={css.settingsGroup}>
-				<h2>Featured Carousel</h2>
-				{renderToggleItem('Show Featured Bar', 'Display the featured media carousel on home screen', 'showFeaturedBar')}
-				{renderSettingItem('Content Type', 'Type of content to display in featured carousel',
+				<h2>Featured Media Bar</h2>
+				{renderToggleItem('Show Featured Bar', 'Display the featured media bar on home screen', 'showFeaturedBar')}
+				{renderSettingItem('Content Type', 'Type of content to display in the featured media bar',
 					getLabel(CONTENT_TYPE_OPTIONS, settings.featuredContentType, 'Movies & TV Shows'),
 					() => openOptionDialog('Content Type', CONTENT_TYPE_OPTIONS, 'featuredContentType'),
 					'setting-featuredContentType'
 				)}
-				{renderSettingItem('Item Count', 'Number of items in featured carousel',
+				{renderSettingItem('Item Count', 'Number of items in the featured media bar',
 					getLabel(FEATURED_ITEM_COUNT_OPTIONS, settings.featuredItemCount, '10 items'),
 					() => openOptionDialog('Item Count', FEATURED_ITEM_COUNT_OPTIONS, 'featuredItemCount'),
 					'setting-featuredItemCount'
 				)}
-				{renderToggleItem('Trailer Preview', 'Automatically play trailer previews in the featured carousel background', 'featuredTrailerPreview')}
-				{settings.featuredTrailerPreview && renderToggleItem('Mute Trailers', 'Mute trailer previews in the featured carousel', 'featuredTrailerMuted')}
+				{renderToggleItem('Trailer Preview', 'Automatically play trailer previews in the featured media bar background', 'featuredTrailerPreview')}
+				{settings.featuredTrailerPreview && renderToggleItem('Mute Trailers', 'Mute trailer previews in the featured media bar', 'featuredTrailerMuted')}
 			</div>
 			<div className={css.settingsGroup}>
 				<h2>Screensaver</h2>
@@ -1102,62 +1081,47 @@ const Settings = ({onBack, onLibrariesChanged}) => {
 						</p>
 					</div>
 				)}
+
+				{isConnected && (
+					<div className={css.settingsGroup}>
+						<h2>{seerrLabel}</h2>
+						{jellyseerr.isEnabled && jellyseerr.isAuthenticated && jellyseerr.isMoonfin ? (
+							<>
+								<div className={css.infoItem}>
+									<span className={css.infoLabel}>Status</span>
+									<span className={css.infoValue}>Connected via Moonfin</span>
+								</div>
+								{jellyseerr.serverUrl && (
+									<div className={css.infoItem}>
+										<span className={css.infoLabel}>{seerrLabel} URL</span>
+										<span className={css.infoValue}>{jellyseerr.serverUrl}</span>
+									</div>
+								)}
+								{jellyseerr.user && (
+									<div className={css.infoItem}>
+										<span className={css.infoLabel}>User</span>
+										<span className={css.infoValue}>
+											{jellyseerr.user.displayName || 'Moonfin User'}
+										</span>
+									</div>
+								)}
+								<SpottableButton
+									className={css.actionButton}
+									onClick={handleJellyseerrDisconnect}
+									spotlightId="jellyseerr-disconnect"
+								>
+									Disconnect
+								</SpottableButton>
+							</>
+						) : (
+							<p className={css.authHint}>
+								{seerrLabel} connection is managed through the Moonfin plugin.
+								Log in above if prompted.
+							</p>
+						)}
+					</div>
+				)}
 			</div>
-		);
-	};
-
-	const renderJellyseerrPanel = () => {
-		return (
-		<div className={css.panel}>
-			<h1>{seerrLabel} Settings</h1>
-
-			{settings.useMoonfinPlugin ? (
-				<div className={css.settingsGroup}>
-					<h2>{seerrLabel} via Plugin</h2>
-					{jellyseerr.isEnabled && jellyseerr.isAuthenticated && jellyseerr.isMoonfin ? (
-						<>
-							<div className={css.infoItem}>
-								<span className={css.infoLabel}>Status</span>
-								<span className={css.infoValue}>Connected via Moonfin</span>
-							</div>
-							{jellyseerr.serverUrl && (
-								<div className={css.infoItem}>
-									<span className={css.infoLabel}>{seerrLabel} URL</span>
-									<span className={css.infoValue}>{jellyseerr.serverUrl}</span>
-								</div>
-							)}
-							{jellyseerr.user && (
-								<div className={css.infoItem}>
-									<span className={css.infoLabel}>User</span>
-									<span className={css.infoValue}>
-										{jellyseerr.user.displayName || 'Moonfin User'}
-									</span>
-								</div>
-							)}
-							<SpottableButton
-								className={css.actionButton}
-								onClick={handleJellyseerrDisconnect}
-								spotlightId="jellyseerr-disconnect"
-							>
-								Disconnect
-							</SpottableButton>
-						</>
-					) : (
-						<p className={css.authHint}>
-							{seerrLabel} is managed through the Moonfin plugin.
-							Enable and configure the plugin in the Plugin settings tab.
-						</p>
-					)}
-				</div>
-			) : (
-				<div className={css.settingsGroup}>
-					<p className={css.authHint}>
-						Enable the Moonfin plugin to access {seerrLabel}.
-						The plugin must be installed on your Jellyfin server.
-					</p>
-				</div>
-			)}
-		</div>
 		);
 	};
 
@@ -1192,6 +1156,11 @@ const Settings = ({onBack, onLibrariesChanged}) => {
 					<span className={css.infoLabel}>Server Version</span>
 					<span className={css.infoValue}>{serverVersion || 'Loading...'}</span>
 				</SpottableDiv>
+			</div>
+
+			<div className={css.settingsGroup}>
+				<h2>Debugging</h2>
+				{renderToggleItem('Server Logging', 'Send logs to Jellyfin server for troubleshooting', 'serverLogging')}
 			</div>
 
 			{capabilities && (
@@ -1454,7 +1423,6 @@ const Settings = ({onBack, onLibrariesChanged}) => {
 			case 'playback': return renderPlaybackPanel();
 			case 'display': return renderDisplayPanel();
 			case 'plugin': return renderPluginPanel();
-			case 'jellyseerr': return renderJellyseerrPanel();
 			case 'about': return renderAboutPanel();
 			default: return renderGeneralPanel();
 		}
