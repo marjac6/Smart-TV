@@ -365,17 +365,56 @@ export const registerAppStateObserver = (onForeground, onBackground) => {
 	};
 };
 
-export const keepScreenOn = async (enable) => {
-	if (!isLunaAvailable) return true;
+let _keepScreenActivityId = null;
 
-	try {
-		await lunaCall('com.webos.service.power', 'state', {
-			state: enable ? 'Active' : 'ActiveStandby'
-		});
-		return true;
-	} catch {
-		return true;
+export const keepScreenOn = async (enable) => {
+	if (enable) {
+		// https://webostv.developer.lge.com/develop/references/activity-manager#type
+		if (typeof window.webOS?.service?.request === 'function') {
+			try {
+				await new Promise((resolve, reject) => {
+					window.webOS.service.request('luna://com.palm.activitymanager', {
+						method: 'create',
+						parameters: {
+							activity: {
+								name: 'moonfin-playback-keepalive',
+								description: 'Keep screen on during video playback',
+								type: {
+									foreground: true,
+									continuous: true,
+									power: true,
+									powerDebounce: true
+								}
+							},
+							start: true,
+							replace: true,
+							subscribe: false
+						},
+						onSuccess: (res) => {
+							_keepScreenActivityId = res.activityId || null;
+							console.log('[webosVideo] Screen keep-on activity created, id:', _keepScreenActivityId);
+							resolve(res);
+						},
+						onFailure: (err) => {
+							console.warn('[webosVideo] Failed to create keep-screen activity:', err.errorText);
+							reject(err);
+						}
+					});
+				});
+			} catch {}
+		}
+	} else if (_keepScreenActivityId != null && typeof window.webOS?.service?.request === 'function') {
+		try {
+			window.webOS.service.request('luna://com.palm.activitymanager', {
+				method: 'cancel',
+				parameters: {activityId: _keepScreenActivityId},
+				onSuccess: () => console.log('[webosVideo] Screen keep-on activity canceled'),
+				onFailure: () => {}
+			});
+		} catch {}
+		_keepScreenActivityId = null;
 	}
+	return true;
 };
 
 export const getAudioOutputInfo = async () => {

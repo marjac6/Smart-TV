@@ -304,9 +304,44 @@ export const registerAppStateObserver = (onForeground, onBackground) => {
 	};
 };
 
-export const keepScreenOn = async () => {
-	// Tizen handles screen keeping via app lifecycle
-	// No explicit API needed - video playback keeps screen on automatically
+let _keepScreenInterval = null;
+
+export const keepScreenOn = async (enable) => {
+	try {
+		if (enable) {
+			if (typeof window.tizen !== 'undefined' && window.tizen.power) {
+				window.tizen.power.request('SCREEN', 'SCREEN_NORMAL');
+				console.log('[tizenVideo] Screen keep-on enabled');
+			}
+			if (!_keepScreenInterval) {
+				const suppressScreenSaver = () => {
+					try {
+						if (typeof webapis !== 'undefined' && webapis.appcommon) {
+							webapis.appcommon.setScreenSaver(webapis.appcommon.AppCommonScreenSaverState.SCREEN_SAVER_OFF);
+						}
+					} catch {}
+				};
+				suppressScreenSaver();
+				_keepScreenInterval = setInterval(suppressScreenSaver, 30000);
+			}
+		} else {
+			if (_keepScreenInterval) {
+				clearInterval(_keepScreenInterval);
+				_keepScreenInterval = null;
+			}
+			try {
+				if (typeof webapis !== 'undefined' && webapis.appcommon) {
+					webapis.appcommon.setScreenSaver(webapis.appcommon.AppCommonScreenSaverState.SCREEN_SAVER_ON);
+				}
+			} catch {}
+			if (typeof window.tizen !== 'undefined' && window.tizen.power) {
+				window.tizen.power.release('SCREEN');
+				console.log('[tizenVideo] Screen keep-on released');
+			}
+		}
+	} catch (e) {
+		console.warn('[tizenVideo] keepScreenOn error:', e.message);
+	}
 	return true;
 };
 
