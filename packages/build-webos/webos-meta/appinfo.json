@@ -19,7 +19,8 @@
         "media.operation",
         "audio.operation",
         "settings.read",
-        "deviceinfo.read"
+        "deviceinfo.read",
+        "database"
     ],
     "allowVideoCapture": false,
     "allowAudioCapture": false,

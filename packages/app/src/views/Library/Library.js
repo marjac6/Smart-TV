@@ -238,7 +238,7 @@ if (isFolderView) {
 	setAllItems(prev => append ? [...prev, ...newItems] : newItems);
 	setTotalCount(result.TotalRecordCount || 0);
 }
-} catch (err) { /* ignore */ } finally {
+} catch (err) { console.error('[Library] loadItems error:', err); } finally {
 setIsLoading(false);
 loadingMoreRef.current = false;
 }
@@ -716,6 +716,7 @@ spotlightId={index === 0 ? 'library-letter-hash' : undefined}
 ) : items.length === 0 ? (
 <div className={css.empty}>No items found</div>
 ) : (
+<div className={css.gridWrapper}>
 <VirtualGridList
 className={css.grid}
 dataSize={items.length}
@@ -729,6 +730,7 @@ onScrollStop={handleScrollStop}
 onKeyDown={handleGridKeyDown}
 spotlightId="library-grid"
 />
+</div>
 )}
 </GridContainer>
 

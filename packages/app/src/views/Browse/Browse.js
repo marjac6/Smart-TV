@@ -1114,9 +1114,6 @@ const Browse = ({
 							src={prevBackdropUrl}
 							alt=""
 							style={{
-								filter: settings.backdropBlurHome > 0
-									? `blur(${settings.backdropBlurHome}px)`
-									: 'none',
 								opacity: prevBackdropOpacity,
 								transition: 'opacity 0.45s ease'
 							}}
@@ -1129,6 +1126,9 @@ const Browse = ({
 							src={backdropUrl}
 							alt=""
 							style={{
+								WebkitFilter: settings.backdropBlurHome > 0
+									? `blur(${settings.backdropBlurHome}px)`
+									: 'none',
 								filter: settings.backdropBlurHome > 0
 									? `blur(${settings.backdropBlurHome}px)`
 									: 'none',

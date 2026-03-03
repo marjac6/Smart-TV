@@ -90,7 +90,8 @@ try {
 
 	// Production build with Enact
 	console.log('\n Building with Enact...');
-	run('npx enact pack -p', {cwd: APP_DIR, env: {...process.env, ENACT_ALIAS, REACT_APP_VERSION: appPkg.version}});
+	const browserslistConfig = path.join(APP_DIR, '.browserslistrc');
+	run('npx enact pack -p', {cwd: APP_DIR, env: {...process.env, BROWSERSLIST_CONFIG: browserslistConfig, ENACT_ALIAS, REACT_APP_VERSION: appPkg.version}});
 
 	// Copy build output to repo root dist/
 	console.log('\n Copying build output...');
@@ -174,6 +175,7 @@ try {
 			fs.copyFileSync(path.join(webosMeta, file), path.join(DIST_DIR, file));
 		}
 	}
+
 	run(`npx ares-package ${DIST_DIR} -o ${ROOT_DIR} --no-minify`);
 
 	// Update manifest with version and hash

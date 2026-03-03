@@ -156,9 +156,12 @@ const Player = ({item, resume, initialMediaSourceId, initialAudioIndex, initialS
 		const handleAppVisible = () => {
 			console.log('[Player] App visible - resuming if was playing');
 			if (videoRef.current && wasPlaying) {
-				videoRef.current.play().catch(err => {
-					console.warn('[Player] Failed to resume playback:', err);
-				});
+				const p = videoRef.current.play();
+				if (p && typeof p.catch === 'function') {
+					p.catch(err => {
+						console.warn('[Player] Failed to resume playback:', err);
+					});
+				}
 			}
 		};
 
@@ -904,9 +907,12 @@ const Player = ({item, resume, initialMediaSourceId, initialAudioIndex, initialS
 			if (playMethod !== 'Transcode') {
 				setDuration(videoRef.current.duration);
 			}
-			videoRef.current.play().catch(err => {
-				console.error('[Player] Failed to start playback:', err);
-			});
+			const p = videoRef.current.play();
+			if (p && typeof p.catch === 'function') {
+				p.catch(err => {
+					console.error('[Player] Failed to start playback:', err);
+				});
+			}
 		}
 	}, [playMethod]);
 

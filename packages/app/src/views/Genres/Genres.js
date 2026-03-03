@@ -419,6 +419,7 @@ return (
 ) : sortedGenres.length === 0 ? (
 <div className={css.empty}>No genres found</div>
 ) : (
+<div className={css.gridWrapper}>
 <VirtualGridList
 className={css.grid}
 dataSize={sortedGenres.length}
@@ -429,6 +430,7 @@ verticalScrollbar="hidden"
 spacing={20}
 spotlightId="genres-grid"
 />
+</div>
 )}
 </GridContainer>
 

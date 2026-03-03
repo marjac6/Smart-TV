@@ -350,6 +350,7 @@ const JellyseerrBrowse = ({browseType, item, mediaType: initialMediaType, onSele
 					) : items.length === 0 ? (
 						<div className={css.empty}>No items found</div>
 					) : (
+						<div className={css.gridWrapper}>
 						<VirtualGridList
 							className={css.grid}
 							dataSize={items.length}
@@ -358,6 +359,7 @@ const JellyseerrBrowse = ({browseType, item, mediaType: initialMediaType, onSele
 							spacing={20}
 							spotlightId="jellyseerr-browse-grid"
 						/>
+						</div>
 					)}
 				</div>
 			</div>

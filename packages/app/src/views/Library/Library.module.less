@@ -247,6 +247,7 @@
 .gridContainer {
 	flex: 1;
 	overflow: hidden;
+	position: relative;
 	padding: 10px 28px 0;
 
 	/* hide scrollbars on all nested scrollable elements */
@@ -261,6 +262,14 @@
 			height: 0;
 		}
 	}
+}
+
+.gridWrapper {
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
 }
 
 .grid {

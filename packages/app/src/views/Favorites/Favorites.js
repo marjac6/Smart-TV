@@ -429,6 +429,7 @@ spotlightId={index === 0 ? 'favorites-letter-hash' : undefined}
 ) : items.length === 0 ? (
 <div className={css.empty}>No favorites found</div>
 ) : (
+<div className={css.gridWrapper}>
 <VirtualGridList
 className={css.grid}
 dataSize={items.length}
@@ -442,6 +443,7 @@ onScrollStop={handleScrollStop}
 onKeyDown={handleGridKeyDown}
 spotlightId="favorites-grid"
 />
+</div>
 )}
 </GridContainer>
 

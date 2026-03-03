@@ -457,6 +457,11 @@ patchFile('@enact/cli/node_modules/generator-function/index.js', [
 		replace: `var cached;
 try { cached = Function('return function* () {}')().constructor; } catch (e) { cached = false; }`,
 		description: "Replace literal function* with safe Function() detection"
+	},
+	{
+		find: "module.exports = () => cached;",
+		replace: "module.exports = function () { return cached; };",
+		description: "Replace arrow function export with ES5 function expression"
 	}
 ]);
 
@@ -500,6 +505,60 @@ patchFile('@enact/core/platform/platform.js', [
   return a.indexOf(v) === i;
 })`,
 		description: 'Replace Set spread with indexOf dedup for Chrome 47 compat'
+	}
+]);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PATCH 11: webpack babel-loader — transpile node_modules for legacy compat
+//
+// By default, Enact's webpack config excludes all node_modules (except @enact/*)
+// from babel-loader. This means dependencies that ship ES2015+ code (e.g.
+// buffer v6 uses let/const/template literals, hls.js ESM uses arrow functions,
+// default params, destructuring, etc.) pass through un-transpiled.
+//
+// Chrome 38 (webOS 3) and Safari 9 (Tizen 2.4) cannot parse ES2015+ syntax.
+// Fix: Remove the node_modules exclusion so ALL JS is transpiled by Babel.
+// The babel-loader already has babelrc:false and explicit configFile, so
+// per-package babel configs are not picked up.
+// ─────────────────────────────────────────────────────────────────────────────
+console.log('\n[Patch 11] webpack — transpile node_modules through babel-loader');
+
+patchFile('@enact/cli/config/webpack.config.js', [
+	{
+		find: /^\s*exclude: \/node_modules\.\(\?!@enact\)\/,\s*$/m,
+		replace: "\t\t\t\t\t\t\t\t\t\t\texclude: /node_modules[\\\\/]core-js/, // PATCHED: only exclude core-js; transpile everything else",
+		description: 'Change node_modules exclusion to only exclude core-js from babel-loader'
+	},
+	{
+		find: /babelrc: false,\n(\s*)\/\/ This is a feature/,
+		replace: "babelrc: false,\n$1sourceType: 'unambiguous',\n$1// This is a feature",
+		description: 'Add sourceType unambiguous so CJS node_modules use require() not import for helpers'
+	}
+]);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PATCH 12: babel-preset-enact — disable useBuiltIns polyfill injection
+//
+// Neither 'entry' nor 'usage' mode works correctly here:
+// - 'entry' silently removes the import without injecting polyfills
+// - 'usage' injects `import` statements into CJS node_modules files,
+//   causing webpack to reject them ("import and export may appear only
+//   with sourceType: module")
+//
+// Setting useBuiltIns to false disables babel's per-file polyfill injection.
+// Instead, polyfills are loaded wholesale by the Enact entry polyfills.js
+// which calls require('core-js/stable') via corejs-proxy.js. Since core-js
+// is excluded from babel-loader (PATCH 11), webpack bundles it as-is.
+// core-js/stable is already ES5-compatible and provides all polyfills
+// needed for Chrome 38+ / Safari 9+.
+// ─────────────────────────────────────────────────────────────────────────────
+console.log('\n[Patch 12] babel-preset-enact — disable useBuiltIns (polyfills loaded via Enact entry)');
+
+patchFile('@enact/cli/node_modules/babel-preset-enact/index.js', [
+	{
+		find: /useBuiltIns: '(?:entry|usage)'/,
+		replace: "useBuiltIns: false",
+		description: "Set useBuiltIns to false — polyfills loaded wholesale via Enact entry corejs-proxy"
 	}
 ]);
 

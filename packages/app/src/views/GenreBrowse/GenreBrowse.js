@@ -451,6 +451,7 @@ const GenreBrowse = ({genre, libraryId, onSelectItem, backHandlerRef}) => {
 					) : items.length === 0 ? (
 						<div className={css.empty}>No items found</div>
 					) : (
+						<div className={css.gridWrapper}>
 						<VirtualGridList
 							className={css.grid}
 							dataSize={serverTotalCount}
@@ -459,6 +460,7 @@ const GenreBrowse = ({genre, libraryId, onSelectItem, backHandlerRef}) => {
 							spacing={20}
 							spotlightId="genre-browse-grid"
 						/>
+						</div>
 					)}
 				</GridContainer>
 			</div>
