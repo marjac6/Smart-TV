@@ -1,8 +1,10 @@
 import packageJson from '../../package.json';
 import {parseUrl, buildQueryString} from '../utils/urlCompat';
+import {isTizen} from '../platform';
 const APP_VERSION = packageJson.version;
 
-const APP_NAME = 'Moonfin for webOS';
+const APP_NAME = isTizen() ? 'Moonfin for Tizen' : 'Moonfin for webOS';
+const DEVICE_NAME = isTizen() ? 'Samsung Smart TV' : 'LG Smart TV';
 
 let deviceId = null;
 let currentServer = null;
@@ -38,7 +40,7 @@ export const setAuth = (userId, token) => {
 };
 
 export const getAuthHeader = () => {
-	let header = `MediaBrowser Client="${APP_NAME}", Device="LG Smart TV", DeviceId="${deviceId}", Version="${APP_VERSION}"`;
+	let header = `MediaBrowser Client="${APP_NAME}", Device="${DEVICE_NAME}", DeviceId="${deviceId}", Version="${APP_VERSION}"`;
 	if (accessToken) {
 		header += `, Token="${accessToken}"`;
 	}
@@ -352,7 +354,7 @@ export const createApiForServer = (serverUrl, token, userId) => {
 	}
 
 	const getServerAuthHeader = () => {
-		let header = `MediaBrowser Client="${APP_NAME}", Device="LG Smart TV", DeviceId="${deviceId}", Version="${APP_VERSION}"`;
+		let header = `MediaBrowser Client="${APP_NAME}", Device="${DEVICE_NAME}", DeviceId="${deviceId}", Version="${APP_VERSION}"`;
 		if (token) {
 			header += `, Token="${token}"`;
 		}
