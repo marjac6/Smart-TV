@@ -5,10 +5,11 @@ import {useAuth} from '../../context/AuthContext';
 import {useSettings} from '../../context/SettingsContext';
 import MediaRow from '../../components/MediaRow';
 import LoadingSpinner from '../../components/LoadingSpinner';
-import {getImageUrl, getBackdropId, getLogoUrl} from '../../utils/helpers';
+import {getImageUrl, getBackdropId, getLogoUrl, formatDuration} from '../../utils/helpers';
 import {getFromStorage, saveToStorage} from '../../services/storage';
 import * as connectionPool from '../../services/connectionPool';
 import RatingsRow from '../../components/RatingsRow';
+import DetailSection from './DetailSection';
 import {KEYS} from '../../utils/keys';
 import {extractYouTubeId, fetchSponsorSegments, fetchVideoStreamUrl, getTrailerStartTime} from '../../services/youtubeTrailer';
 import {getSharedVideoElement, cleanupVideoElement} from '@moonfin/platform-webos/video';
@@ -17,9 +18,7 @@ import css from './Browse.module.less';
 
 const FOCUS_DELAY_MS = 100;
 const BACKDROP_DEBOUNCE_MS = 500;
-const FOCUS_ITEM_DEBOUNCE_MS = 400;
 const FEATURED_GENRES_LIMIT = 3;
-const DETAIL_GENRES_LIMIT = 2;
 const TRANSITION_DELAY_MS = 450;
 const PRELOAD_ADJACENT_SLIDES = 2;
 const TRAILER_REVEAL_MS = 4000;
@@ -60,7 +59,7 @@ const Browse = ({
 	const [prevBackdropOpacity, setPrevBackdropOpacity] = useState(0);
 	const [browseMode, setBrowseMode] = useState('featured');
 	const [featuredFocused, setFeaturedFocused] = useState(false);
-	const [focusedItem, setFocusedItem] = useState(null);
+	const [focusedItemForBackdrop, setFocusedItemForBackdrop] = useState(null);
 	const [allRowData, setAllRowData] = useState([]);
 	const [trailerActive, setTrailerActive] = useState(false);
 	const mainContentRef = useRef(null);
@@ -68,8 +67,7 @@ const Browse = ({
 	const backdropFadeIntervalRef = useRef(null);
 	const pendingBackdropRef = useRef(null);
 	const preloadedImagesRef = useRef(new Set());
-	const focusItemTimeoutRef = useRef(null);
-	const focusItemAbortRef = useRef(null);
+	const detailSectionRef = useRef(null);
 	const lastFocusedRowRef = useRef(null);
 	const wasVisibleRef = useRef(true);
 	const trailerContainerRef = useRef(null);
@@ -303,12 +301,6 @@ const Browse = ({
 
 	useEffect(() => {
 		return () => {
-			if (focusItemTimeoutRef.current) {
-				clearTimeout(focusItemTimeoutRef.current);
-			}
-			if (focusItemAbortRef.current && typeof focusItemAbortRef.current.abort === 'function') {
-				focusItemAbortRef.current.abort();
-			}
 			if (backdropFadeIntervalRef.current) {
 				clearTimeout(backdropFadeIntervalRef.current);
 			}
@@ -773,9 +765,9 @@ const Browse = ({
 		if (browseMode === 'featured') {
 			itemForBackdrop = featuredItems[currentFeaturedIndex];
 			backdropId = getBackdropId(itemForBackdrop);
-		} else if (focusedItem && !isLegacy && settings.showHomeBackdrop !== false) {
-			itemForBackdrop = focusedItem;
-			backdropId = getBackdropId(focusedItem);
+		} else if (focusedItemForBackdrop && !isLegacy && settings.showHomeBackdrop !== false) {
+			itemForBackdrop = focusedItemForBackdrop;
+			backdropId = getBackdropId(focusedItemForBackdrop);
 		} else {
 			if (backdropUrl) {
 				setBackdropUrl('');
@@ -816,7 +808,7 @@ const Browse = ({
 				pendingBackdropRef.current = null;
 			}
 		};
-	}, [focusedItem, browseMode, backdropUrl, crossFadeBackdrop, currentFeaturedIndex, featuredItems, getItemServerUrl, isLegacy]);
+	}, [focusedItemForBackdrop, browseMode, backdropUrl, crossFadeBackdrop, currentFeaturedIndex, featuredItems, getItemServerUrl, isLegacy]);
 
 	const handleSelectItem = useCallback((item) => {
 		if (lastFocusedRowRef.current !== null) {
@@ -894,28 +886,8 @@ const Browse = ({
 	}, [browseMode]);
 
 	const handleFocusItem = useCallback((item) => {
-		if (focusItemTimeoutRef.current) {
-			clearTimeout(focusItemTimeoutRef.current);
-		}
-		if (focusItemAbortRef.current && typeof focusItemAbortRef.current.abort === 'function') {
-			focusItemAbortRef.current.abort();
-			focusItemAbortRef.current = null;
-		}
-		focusItemTimeoutRef.current = setTimeout(() => {
-			setFocusedItem(item);
-			const needsBackdrop = !item.BackdropImageTags?.length && !item.ParentBackdropImageTags?.length;
-			const needsProviderIds = !item.ProviderIds;
-			if (needsBackdrop || needsProviderIds) {
-				const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
-				focusItemAbortRef.current = controller;
-				api.getItem(item.Id).then(fullItem => {
-					if (!(controller && controller.signal.aborted)) {
-						setFocusedItem(fullItem);
-					}
-				}).catch(() => {});
-			}
-		}, FOCUS_ITEM_DEBOUNCE_MS);
-	}, [api]);
+		detailSectionRef.current?.handleFocusItem(item);
+	}, []);
 
 	const handleFeaturedClick = useCallback(() => {
 		const item = featuredItems[currentFeaturedIndex];
@@ -924,7 +896,7 @@ const Browse = ({
 
 	const handleFeaturedFocus = useCallback(() => {
 		setFeaturedFocused(true);
-		setFocusedItem(null);
+		detailSectionRef.current?.clearFocusedItem();
 		setBrowseMode('featured');
 	}, []);
 
@@ -941,14 +913,6 @@ const Browse = ({
 		e.stopPropagation();
 		handleFeaturedNext();
 	}, [handleFeaturedNext]);
-
-	const formatRuntime = (ticks) => {
-		if (!ticks) return '';
-		const minutes = Math.round(ticks / 600000000);
-		const hours = Math.floor(minutes / 60);
-		const mins = minutes % 60;
-		return hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
-	};
 
 	const stopTrailer = useCallback(() => {
 		if (trailerRevealTimerRef.current) {
@@ -1217,7 +1181,7 @@ const Browse = ({
 											<span className={css.metaItem}>{currentFeatured.OfficialRating}</span>
 										)}
 										{currentFeatured.RunTimeTicks && (
-											<span className={css.metaItem}>{formatRuntime(currentFeatured.RunTimeTicks)}</span>
+											<span className={css.metaItem}>{formatDuration(currentFeatured.RunTimeTicks)}</span>
 										)}
 										{currentFeatured.Genres?.slice(0, FEATURED_GENRES_LIMIT).map((g, i) => (
 											<span key={i} className={css.metaItem}>{g}</span>
@@ -1247,46 +1211,14 @@ const Browse = ({
 					</div>
 				)}
 
-				<div
-					className={`${css.detailSection} ${browseMode === 'rows' ? css.detailVisible : css.detailHidden}`}
-				>
-					{focusedItem ? (
-						<>
-							<h2 className={css.detailTitle}>
-								{focusedItem.Type === 'Episode' ? focusedItem.SeriesName : focusedItem.Name}
-							</h2>
-							<div className={css.detailInfoRow}>
-								{focusedItem.ProductionYear && (
-									<span className={css.infoBadge}>{focusedItem.ProductionYear}</span>
-								)}
-								{focusedItem.OfficialRating && (
-									<span className={css.infoBadge}>{focusedItem.OfficialRating}</span>
-								)}
-								{focusedItem.RunTimeTicks && (
-									<span className={css.infoBadge}>{formatRuntime(focusedItem.RunTimeTicks)}</span>
-								)}
-								{focusedItem.Type === 'Episode' && focusedItem.ParentIndexNumber !== undefined && (
-									<span className={css.infoBadge}>
-										S{focusedItem.ParentIndexNumber} E{focusedItem.IndexNumber}
-									</span>
-								)}
-								{focusedItem.Genres?.slice(0, DETAIL_GENRES_LIMIT).map((g, i) => (
-									<span key={i} className={css.infoBadge}>{g}</span>
-								))}
-							</div>
-							{settings.useMoonfinPlugin && settings.mdblistEnabled !== false && (
-								<RatingsRow item={focusedItem} serverUrl={getItemServerUrl(focusedItem)} compact />
-							)}
-							<p className={css.detailSummary}>
-								{focusedItem.Overview || 'No description available.'}
-							</p>
-						</>
-					) : (
-						<div className={css.detailPlaceholder}>
-							<p>Navigate to an item to see details</p>
-						</div>
-					)}
-				</div>
+				<DetailSection
+					ref={detailSectionRef}
+					browseMode={browseMode}
+					api={api}
+					getItemServerUrl={getItemServerUrl}
+					settings={settings}
+					onFocusedItemChange={setFocusedItemForBackdrop}
+				/>
 
 				<div
 					className={`${css.contentRows} ${browseMode === 'rows' ? css.rowsMode : ''}`}
