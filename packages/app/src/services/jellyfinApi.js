@@ -141,6 +141,9 @@ export const api = {
 
 	getItem: (itemId) => request(`/Users/${currentUser}/Items/${itemId}`),
 
+	getItemForDetail: (itemId) =>
+		request(`/Users/${currentUser}/Items/${itemId}?Fields=Overview,Genres,OfficialRating,BackdropImageTags,ParentBackdropImageTags,ParentBackdropItemId,ProviderIds,RunTimeTicks,ProductionYear`),
+
 	getItemWithChapters: (itemId) => request(`/Users/${currentUser}/Items/${itemId}?Fields=Chapters`),
 
 	getMediaSegments: (itemId) => request(`/MediaSegments/${itemId}`),
@@ -153,16 +156,16 @@ export const api = {
 	}),
 
 	getLatest: (libraryId, limit = 20) =>
-		request(`/Users/${currentUser}/Items/Latest?ParentId=${libraryId}&Limit=${limit}&Fields=Overview,Genres,OfficialRating,ImageTags,ParentLogoImageTag,BackdropImageTags,ParentBackdropImageTags,ParentBackdropItemId,ProviderIds&ImageTypeLimit=1&GroupItems=true`),
+		request(`/Users/${currentUser}/Items/Latest?ParentId=${libraryId}&Limit=${limit}&Fields=ImageTags,ParentThumbItemId,ParentBackdropItemId&ImageTypeLimit=1&GroupItems=true`),
 
 	getCollections: (limit = 50) =>
 		request(`/Users/${currentUser}/Items?IncludeItemTypes=BoxSet&Recursive=true&SortBy=SortName&SortOrder=Ascending&Limit=${limit}&Fields=PrimaryImageAspectRatio,ProductionYear`),
 
 	getResumeItems: (limit = 12) =>
-		request(`/Users/${currentUser}/Items/Resume?Limit=${limit}&MediaTypes=Video&Fields=Overview,BackdropImageTags,ParentBackdropImageTags,ParentBackdropItemId,ProviderIds`),
+		request(`/Users/${currentUser}/Items/Resume?Limit=${limit}&MediaTypes=Video&Fields=ImageTags,ParentThumbItemId,ParentBackdropItemId`),
 
 	getNextUp: (limit = 24, seriesId = null) => {
-		let url = `/Shows/NextUp?UserId=${currentUser}&Limit=${limit}&Fields=Overview,BackdropImageTags,ParentBackdropImageTags,ParentBackdropItemId,ProviderIds`;
+		let url = `/Shows/NextUp?UserId=${currentUser}&Limit=${limit}&Fields=ImageTags,ParentThumbItemId,ParentBackdropItemId`;
 		if (seriesId) url += `&SeriesId=${seriesId}`;
 		return request(url);
 	},

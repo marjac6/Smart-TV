@@ -38,6 +38,31 @@ let lastFocusState = null;
 
 const EXCLUDED_COLLECTION_TYPES = ['livetv', 'boxsets', 'books', 'musicvideos', 'homevideos', 'photos'];
 
+const stripItemForCache = (item) => ({
+	Id: item.Id,
+	Name: item.Name,
+	Type: item.Type,
+	ImageTags: item.ImageTags,
+	SeriesName: item.SeriesName,
+	SeriesId: item.SeriesId,
+	ParentIndexNumber: item.ParentIndexNumber,
+	IndexNumber: item.IndexNumber,
+	ParentThumbItemId: item.ParentThumbItemId,
+	ParentBackdropItemId: item.ParentBackdropItemId,
+	AlbumId: item.AlbumId,
+	AlbumPrimaryImageTag: item.AlbumPrimaryImageTag,
+	AlbumArtist: item.AlbumArtist,
+	CollectionType: item.CollectionType,
+	UserData: item.UserData ? {
+		PlayedPercentage: item.UserData.PlayedPercentage,
+		Played: item.UserData.Played,
+		LastPlayedDate: item.UserData.LastPlayedDate,
+	} : undefined,
+	_serverUrl: item._serverUrl,
+	_serverName: item._serverName,
+	isLibraryTile: item.isLibraryTile,
+});
+
 const SpottableDiv = Spottable('div');
 const SpottableButton = Spottable('button');
 
@@ -400,11 +425,14 @@ const Browse = ({
 		return Date.now() - timestamp < ttl;
 	}, []);
 
-	// Save browse data to persistent storage
 	const saveBrowseCache = useCallback(async (rowData, libs, featured) => {
 		try {
+			const strippedRows = rowData.map(row => ({
+				...row,
+				items: row.items.map(stripItemForCache)
+			}));
 			const cacheData = {
-				rowData,
+				rowData: strippedRows,
 				libraries: libs,
 				featuredItems: featured,
 				timestamp: Date.now(),

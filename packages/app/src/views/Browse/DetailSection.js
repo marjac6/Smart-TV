@@ -40,7 +40,7 @@ const DetailSection = forwardRef(({
 			if (needsBackdrop || needsProviderIds) {
 				const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
 				focusItemAbortRef.current = controller;
-				api.getItem(item.Id).then(fullItem => {
+				api.getItemForDetail(item.Id).then(fullItem => {
 					if (!(controller && controller.signal.aborted)) {
 						setFocusedItem(fullItem);
 						onFocusedItemChange?.(fullItem);
