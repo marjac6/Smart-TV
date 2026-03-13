@@ -185,21 +185,25 @@ const Browse = ({
 
 	const uiPanelStyle = useMemo(() => {
 		const rgb = getUiColorRgb(settings.uiColor);
+		const opacity = (settings.uiOpacity || 85) / 100 * 0.6;
+		const useBlur = !isLegacy && settings.uiBlur > 0;
 		return {
-			background: `rgba(${rgb}, ${(settings.uiOpacity || 85) / 100 * 0.6})`,
-			backdropFilter: settings.uiBlur > 0 ? `blur(${settings.uiBlur / 2}px)` : 'none',
-			WebkitBackdropFilter: settings.uiBlur > 0 ? `blur(${settings.uiBlur / 2}px)` : 'none'
+			background: `rgba(${rgb}, ${isLegacy ? Math.min(opacity + 0.2, 0.95) : opacity})`,
+			backdropFilter: useBlur ? `blur(${settings.uiBlur / 2}px)` : 'none',
+			WebkitBackdropFilter: useBlur ? `blur(${settings.uiBlur / 2}px)` : 'none'
 		};
-	}, [settings.uiBlur, settings.uiOpacity, settings.uiColor, getUiColorRgb]);
+	}, [settings.uiBlur, settings.uiOpacity, settings.uiColor, getUiColorRgb, isLegacy]);
 
 	const uiButtonStyle = useMemo(() => {
 		const rgb = getUiColorRgb(settings.uiColor);
+		const opacity = (settings.uiOpacity || 85) / 100 * 0.7;
+		const useBlur = !isLegacy && settings.uiBlur > 0;
 		return {
-			background: `rgba(${rgb}, ${(settings.uiOpacity || 85) / 100 * 0.7})`,
-			backdropFilter: settings.uiBlur > 0 ? `blur(${settings.uiBlur / 2}px)` : 'none',
-			WebkitBackdropFilter: settings.uiBlur > 0 ? `blur(${settings.uiBlur / 2}px)` : 'none'
+			background: `rgba(${rgb}, ${isLegacy ? Math.min(opacity + 0.2, 0.95) : opacity})`,
+			backdropFilter: useBlur ? `blur(${settings.uiBlur / 2}px)` : 'none',
+			WebkitBackdropFilter: useBlur ? `blur(${settings.uiBlur / 2}px)` : 'none'
 		};
-	}, [settings.uiBlur, settings.uiOpacity, settings.uiColor, getUiColorRgb]);
+	}, [settings.uiBlur, settings.uiOpacity, settings.uiColor, getUiColorRgb, isLegacy]);
 
 	const homeRowsConfig = useMemo(() => {
 		return [...(settings.homeRows || [])].sort((a, b) => a.order - b.order);
