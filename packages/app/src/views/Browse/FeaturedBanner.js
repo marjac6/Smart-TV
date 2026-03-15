@@ -38,6 +38,7 @@ const FeaturedBanner = memo(({
 	const trailerVideoIdRef = useRef(null);
 	const trailerRevealTimerRef = useRef(null);
 	const sponsorSegmentsRef = useRef([]);
+	const carouselIntervalRef = useRef(null);
 
 	const currentFeatured = featuredItems[currentIndex];
 
@@ -77,15 +78,29 @@ const FeaturedBanner = memo(({
 		}
 	}, [currentIndex, featuredItems, serverUrl]);
 
-	useEffect(() => {
+	const startCarouselTimer = useCallback(() => {
+		if (carouselIntervalRef.current) {
+			clearInterval(carouselIntervalRef.current);
+			carouselIntervalRef.current = null;
+		}
+
 		const carouselSpeed = settings.carouselSpeed || 8000;
 		if (!isVisible || featuredItems.length <= 1 || !featuredFocused || carouselSpeed === 0 || trailerActive) return;
 
-		const interval = setInterval(() => {
+		carouselIntervalRef.current = setInterval(() => {
 			setCurrentIndex((prev) => (prev + 1) % featuredItems.length);
 		}, carouselSpeed);
+	}, [isVisible, featuredItems.length, featuredFocused, settings.carouselSpeed, trailerActive]);
 
-		return () => clearInterval(interval);
+	useEffect(() => {
+	  if (!isVisible || featuredItems.length <= 1 || !featuredFocused || settings.carouselSpeed === 0 || trailerActive) return;
+		startCarouselTimer();
+		return () => {
+		  if (carouselIntervalRef.current) {
+       	clearInterval(carouselIntervalRef.current);
+       	carouselIntervalRef.current = null;
+			}
+		}
 	}, [isVisible, featuredItems.length, featuredFocused, settings.carouselSpeed, trailerActive]);
 
 	const stopTrailer = useCallback(async () => {
@@ -244,14 +259,16 @@ const FeaturedBanner = memo(({
 		setCurrentIndex((prev) =>
 			prev === 0 ? featuredItems.length - 1 : prev - 1
 		);
-	}, [featuredItems.length]);
+		startCarouselTimer();
+	}, [featuredItems.length, startCarouselTimer]);
 
 	const handleFeaturedNext = useCallback(() => {
 		if (featuredItems.length <= 1) return;
 		setCurrentIndex((prev) =>
 			(prev + 1) % featuredItems.length
 		);
-	}, [featuredItems.length]);
+		startCarouselTimer();
+	}, [featuredItems.length, startCarouselTimer]);
 
 	const handleFeaturedKeyDown = useCallback((e) => {
 		if (e.keyCode === KEYS.LEFT) {
