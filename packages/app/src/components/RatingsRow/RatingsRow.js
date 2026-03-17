@@ -1,12 +1,8 @@
 import {useState, useEffect, useRef} from 'react';
 import {fetchRatings, buildDisplayRatings, getContentType, getTmdbId} from '../../services/mdblistApi';
 import {useSettings} from '../../context/SettingsContext';
+import {getRtFallbackIcon} from '../icons/rtIcons';
 import css from './RatingsRow.module.less';
-
-const getRtIcon = (serverUrl, score) => {
-	if (score >= 60) return serverUrl + '/Moonfin/Assets/rt-fresh.svg';
-	return serverUrl + '/Moonfin/Assets/rt-rotten.svg';
-};
 
 const RatingsRow = ({item, serverUrl, compact = false, pluginEnabled = true}) => {
 	const {settings} = useSettings();
@@ -62,7 +58,7 @@ const RatingsRow = ({item, serverUrl, compact = false, pluginEnabled = true}) =>
 					<span className={css.ratingCompact}>
 						<img
 							className={css.ratingIconCompact}
-							src={getRtIcon(serverUrl, item.CriticRating)}
+							src={getRtFallbackIcon(item.CriticRating)}
 							alt="Rotten Tomatoes"
 						/>
 						<span className={css.ratingValueCompact}>{item.CriticRating}%</span>
@@ -98,7 +94,7 @@ const RatingsRow = ({item, serverUrl, compact = false, pluginEnabled = true}) =>
 				<div className={css.ratingItem}>
 					<img
 						className={css.ratingIcon}
-						src={getRtIcon(serverUrl, item.CriticRating)}
+						src={getRtFallbackIcon(item.CriticRating)}
 						alt="Rotten Tomatoes"
 					/>
 					<div className={css.ratingInfo}>

@@ -9,6 +9,7 @@ import LoadingSpinner from '../../components/LoadingSpinner';
 import {getImageUrl, getPrimaryImageId, formatDuration} from '../../utils/helpers';
 import {useSettings} from '../../context/SettingsContext';
 import {fetchRatings, buildDisplayRatings} from '../../services/mdblistApi';
+import {getRtFallbackIcon} from '../../components/icons/rtIcons';
 import {useStorage} from '../../hooks/useStorage';
 import {KEYS} from '../../utils/keys';
 
@@ -612,12 +613,9 @@ if (focusedItem && focusedItem.CommunityRating) {
 	);
 }
 if (focusedItem && !(settings?.mdblistEnabled && settings?.useMoonfinPlugin) && focusedItem.CriticRating != null) {
-	const rtIcon = focusedItem.CriticRating >= 60
-		? effectiveServerUrl + '/Moonfin/Assets/rt-fresh.svg'
-		: effectiveServerUrl + '/Moonfin/Assets/rt-rotten.svg';
 	ratingElements.push(
 		<span key="rt" className={css.pluginRating}>
-			<img className={css.ratingIcon} src={rtIcon} alt="Rotten Tomatoes" />
+			<img className={css.ratingIcon} src={getRtFallbackIcon(focusedItem.CriticRating)} alt="Rotten Tomatoes" />
 			<span>{focusedItem.CriticRating}%</span>
 		</span>
 	);
