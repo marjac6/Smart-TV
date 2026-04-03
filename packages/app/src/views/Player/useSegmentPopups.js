@@ -72,6 +72,8 @@ const useSegmentPopups = ({
 	// --- Skip Intro ---
 
 	const handleSkipIntro = useCallback(() => {
+		if (skipIntroDismissedRef.current) return;
+		skipIntroDismissedRef.current = true;
 		onSeekToIntroEnd?.();
 		setShowSkipIntro(false);
 	}, [onSeekToIntroEnd]);
@@ -105,7 +107,6 @@ const useSegmentPopups = ({
 				const nearIntro = ticks >= (introStart - 1) && ticks < (introEnd + 1);
 				if (inIntro && introAction === 'auto' && !skipIntroDismissedRef.current) {
 					handleSkipIntro();
-					skipIntroDismissedRef.current = true;
 				}
 				if (inIntro && introAction === 'ask' && !skipIntroDismissedRef.current) {
 					setShowSkipIntro(true);
