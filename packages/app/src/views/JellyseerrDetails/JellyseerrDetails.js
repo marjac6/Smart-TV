@@ -358,6 +358,31 @@ const SeasonSelectionPopup = memo(({open, title, seasons, seasonStatusMap, onCon
 		}
 	}, [selectedSeasons, onConfirm]);
 
+	const handleSeasonListKeyDown = useCallback((e) => {
+		if (e.keyCode !== KEYS.DOWN) return;
+
+		const seasonItem = e.target.closest(`.${css.seasonCheckItem}`);
+		if (!seasonItem) return;
+
+		const seasonItems = Array.from(e.currentTarget.querySelectorAll(`.${css.seasonCheckItem}`));
+		const currentIndex = seasonItems.indexOf(seasonItem);
+		if (currentIndex === -1 || currentIndex < seasonItems.length - 1) return;
+
+		e.preventDefault();
+		e.stopPropagation();
+		if (!safeFocus('season-request-button')) {
+			safeFocus('season-cancel-button');
+		}
+	}, []);
+
+	const handleSeasonButtonKeyDown = useCallback((e) => {
+		if (e.keyCode !== KEYS.UP) return;
+
+		e.preventDefault();
+		e.stopPropagation();
+		safeFocus('season-selection');
+	}, []);
+
 	const canConfirm = selectedSeasons.size > 0;
 
 	return (
@@ -366,7 +391,7 @@ const SeasonSelectionPopup = memo(({open, title, seasons, seasonStatusMap, onCon
 				<h2 className={css.seasonPopupTitle}>Select Seasons</h2>
 				<p className={css.seasonPopupSubtitle}>{title}</p>
 
-				<SeasonSelectionContainer className={css.seasonsList} spotlightId="season-selection">
+				<SeasonSelectionContainer className={css.seasonsList} spotlightId="season-selection" onKeyDown={handleSeasonListKeyDown}>
 					{allSelectableSeasons.length > 1 && (
 						<SpottableDiv
 							className={`${css.seasonCheckItem} ${allSelected ? css.seasonCheckItemSelected : ''}`}
@@ -415,13 +440,15 @@ const SeasonSelectionPopup = memo(({open, title, seasons, seasonStatusMap, onCon
 
 					<div className={css.seasonPopupButtons}>
 						<Button
+							spotlightId="season-request-button"
 							className={`${css.seasonConfirmButton} ${!canConfirm ? css.seasonButtonDisabled : ''}`}
 							onClick={handleConfirm}
+							onKeyDown={handleSeasonButtonKeyDown}
 							disabled={!canConfirm}
 						>
 							Request {selectedSeasons.size} Season{selectedSeasons.size !== 1 ? 's' : ''}
 						</Button>
-						<Button className={css.seasonCancelButton} onClick={onClose}>
+						<Button spotlightId="season-cancel-button" className={css.seasonCancelButton} onClick={onClose} onKeyDown={handleSeasonButtonKeyDown}>
 							Cancel
 						</Button>
 					</div>
