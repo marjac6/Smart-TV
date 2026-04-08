@@ -75,7 +75,7 @@ setIsLoading(true);
 try {
 let genreList;
 if (unifiedMode && !selectedLibrary) {
-genreList = await connectionPool.getGenresFromAllServers();
+genreList = await connectionPool.getGenresFromAllServers(null, settings.uiLanguage);
 
 let backdropPool = [];
 try {
@@ -96,7 +96,10 @@ id: genre.Id,
 name: genre.Name,
 itemCount: genre.ChildCount || 0,
 backdropUrl: backdropPool.length > 0 ? backdropPool[index % backdropPool.length] : null,
-_unifiedGenre: true
+	_unifiedGenre: true,
+	_queryNames: genre._queryNames,
+	_serverGenreNames: genre._serverGenreNames,
+	_canonicalKey: genre._canonicalKey
 }));
 setGenres(unifiedGenres);
 setIsLoading(false);
@@ -203,7 +206,7 @@ setIsLoading(false);
 };
 
 loadGenres();
-}, [api, serverUrl, selectedLibrary, unifiedMode]);
+}, [api, serverUrl, selectedLibrary, unifiedMode, settings.uiLanguage]);
 
 const sortedGenres = useMemo(() => {
 const sorted = [...genres];

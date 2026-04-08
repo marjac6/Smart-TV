@@ -13,6 +13,7 @@ import {fetchRatings, buildDisplayRatings} from '../../services/mdblistApi';
 import {getRtFallbackIcon} from '../../components/icons/rtIcons';
 import {useStorage} from '../../hooks/useStorage';
 import {KEYS} from '../../utils/keys';
+import {getAudioLanguageOptions, matchesAudioLanguageFilter} from '../../utils/audioLanguageFilter';
 
 import css from './Library.module.less';
 
@@ -76,6 +77,7 @@ const [totalCount, setTotalCount] = useState(0);
 const [sortKey, setSortKey] = useState('SortName');
 const [favoritesOnly, setFavoritesOnly] = useState(false);
 const [watchedOnly, setWatchedOnly] = useState(false);
+const [selectedAudioLanguage, setSelectedAudioLanguage] = useState('');
 const [musicContentType, setMusicContentType] = useState('albums');
 const [startLetter, setStartLetter] = useState(null);
 const [showSortPanel, setShowSortPanel] = useState(false);
@@ -91,6 +93,8 @@ const isFolderView = folderView === 'on';
 const [folderStack, setFolderStack] = useState([]);
 const currentFolderId = folderStack.length > 0 ? folderStack[folderStack.length - 1].id : library?.Id;
 const isGenreMode = !!genreFilter;
+const libraryCollectionType = library?.CollectionType?.toLowerCase();
+const supportsAudioLanguageFilter = isGenreMode || libraryCollectionType === 'movies' || libraryCollectionType === 'tvshows';
 
 const loadingMoreRef = useRef(false);
 const apiFetchIndexRef = useRef(0);
@@ -111,6 +115,10 @@ return !/[A-Z]/.test(firstChar);
 return firstChar === startLetter;
 });
 }, [allItems, startLetter]);
+
+const audioLanguageOptions = useMemo(() => {
+	return getAudioLanguageOptions(allItems, true);
+}, [allItems]);
 
 const itemsRef = useRef(items);
 itemsRef.current = items;
@@ -199,7 +207,7 @@ if (isFolderView) {
 		SortOrder: sortOption.order,
 		Recursive: true,
 		EnableTotalRecordCount: true,
-		Fields: 'ProductionYear,ImageTags,OfficialRating,CommunityRating,CriticRating,RunTimeTicks,ProviderIds,UserData'
+		Fields: 'ProductionYear,ImageTags,OfficialRating,CommunityRating,CriticRating,RunTimeTicks,ProviderIds,UserData,MediaStreams,MediaSources'
 	};
 
 	if (library?.Id) params.ParentId = library.Id;
@@ -232,6 +240,10 @@ if (isFolderView) {
 		: await effectiveApi.getItems(params);
 	let newItems = result.Items || [];
 
+	if (supportsAudioLanguageFilter && selectedAudioLanguage) {
+		newItems = newItems.filter((item) => matchesAudioLanguageFilter(item, selectedAudioLanguage));
+	}
+
 	if (excludeTypes && newItems.length > 0) {
 		newItems = newItems.filter(item => item.Type !== 'BoxSet');
 	}
@@ -244,7 +256,7 @@ if (isFolderView) {
 setIsLoading(false);
 loadingMoreRef.current = false;
 }
-}, [effectiveApi, library, genreFilter, sortKey, favoritesOnly, watchedOnly, isFolderView, currentFolderId, isMusicLibrary, musicContentType, getItemTypeForLibrary, getExcludeItemTypes]);
+}, [effectiveApi, library, genreFilter, sortKey, favoritesOnly, watchedOnly, selectedAudioLanguage, supportsAudioLanguageFilter, isFolderView, currentFolderId, isMusicLibrary, musicContentType, getItemTypeForLibrary, getExcludeItemTypes]);
 
 useEffect(() => {
 if (library || genreFilter) {
@@ -255,7 +267,7 @@ apiFetchIndexRef.current = 0;
 initialFocusDoneRef.current = false;
 loadItems(0, false);
 }
-}, [library, sortKey, favoritesOnly, watchedOnly, musicContentType, isFolderView, currentFolderId, loadItems, genreFilter]);
+}, [library, sortKey, favoritesOnly, watchedOnly, selectedAudioLanguage, musicContentType, isFolderView, currentFolderId, loadItems, genreFilter]);
 
 useEffect(() => {
 if (items.length > 0 && !isLoading && !initialFocusDoneRef.current) {
@@ -397,6 +409,15 @@ const handleToggleWatched = useCallback(() => {
 	setWatchedOnly(prev => !prev);
 	setShowSortPanel(false);
 	setTimeout(() => Spotlight.focus('library-grid'), 100);
+}, []);
+
+const handleAudioLanguageSelect = useCallback((ev) => {
+const languageKey = ev.currentTarget?.dataset?.languageKey;
+if (languageKey !== undefined) {
+	setSelectedAudioLanguage(languageKey);
+setShowSortPanel(false);
+setTimeout(() => Spotlight.focus('library-grid'), 100);
+}
 }, []);
 
 const handleToggleSettingsPanel = useCallback(() => {
@@ -577,6 +598,10 @@ const sortLabel = currentSort ? $L(currentSort.label) : $L('Name');
 const filterParts = [];
 if (favoritesOnly) filterParts.push($L('Favorites'));
 if (watchedOnly) filterParts.push($L('Watched'));
+if (selectedAudioLanguage) {
+	const activeAudioLanguage = audioLanguageOptions.find((option) => option.key === selectedAudioLanguage);
+	filterParts.push($L('Audio: {language}').replace('{language}', activeAudioLanguage?.label || selectedAudioLanguage));
+}
 const filterLabel = filterParts.length > 0 ? filterParts.join(' & ') : $L('All items');
 const folderName = folderStack.length > 0 ? folderStack[folderStack.length - 1].name : library?.Name;
 const displayName = genreFilter || library?.Name || '';
@@ -844,6 +869,29 @@ spotlightId="filter-watched"
 <span className={css.sortOptionLabel}>{$L('Watched Only')}</span>
 </SpottableButton>
 </div>
+
+{supportsAudioLanguageFilter && (
+<div className={css.filterSection}>
+<div className={css.sortSectionLabel}>{$L('Audio Language')}</div>
+{audioLanguageOptions.map((option, index) => (
+<SpottableButton
+key={option.key || 'any'}
+className={`${css.sortOption} ${selectedAudioLanguage === option.key ? css.sortOptionActive : ''}`}
+onClick={handleAudioLanguageSelect}
+data-language-key={option.key}
+spotlightId={`filter-audio-language-${index}`}
+>
+<span className={css.radioCircle}>
+{selectedAudioLanguage === option.key && <span className={css.radioFill} />}
+</span>
+<span className={css.sortOptionLabel}>
+{option.key === '' ? $L('Any') : option.label}
+</span>
+</SpottableButton>
+))}
+<div className={css.filterHint}>{$L('Items without audio language metadata are still shown')}</div>
+</div>
+)}
 </SortPanelContainer>
 </div>
 )}

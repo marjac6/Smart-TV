@@ -11,6 +11,7 @@ import LoadingSpinner from '../../components/LoadingSpinner';
 import ProxiedImage from '../../components/ProxiedImage';
 import {KEYS} from '../../utils/keys';
 import {getImageUrl} from '../../utils/helpers';
+import {getAudioLanguageOptions, matchesAudioLanguageFilter} from '../../utils/audioLanguageFilter';
 
 import css from './Search.module.less';
 
@@ -36,6 +37,7 @@ const Search = ({onSelectItem, onSelectPerson}) => {
 	const {isEnabled: jellyseerrEnabled, api: jellyseerrApi} = useJellyseerr();
 	const [query, setQuery] = useState('');
 	const [isLoading, setIsLoading] = useState(false);
+	const [selectedAudioLanguage, setSelectedAudioLanguage] = useState('');
 	const [results, setResults] = useState({
 		movies: [],
 		shows: [],
@@ -70,6 +72,24 @@ const Search = ({onSelectItem, onSelectPerson}) => {
 			results.jellyseerr.length > 0;
 	}, [results]);
 
+	const audioLanguageOptions = useMemo(() => {
+		return getAudioLanguageOptions([
+			...results.movies,
+			...results.shows,
+			...results.episodes
+		], true);
+	}, [results]);
+
+	const filteredResults = useMemo(() => {
+		if (!selectedAudioLanguage) return results;
+		return {
+			...results,
+			movies: results.movies.filter(item => matchesAudioLanguageFilter(item, selectedAudioLanguage)),
+			shows: results.shows.filter(item => matchesAudioLanguageFilter(item, selectedAudioLanguage)),
+			episodes: results.episodes.filter(item => matchesAudioLanguageFilter(item, selectedAudioLanguage))
+		};
+	}, [results, selectedAudioLanguage]);
+
 	const getVisibleItems = useCallback((items, rowId) => {
 		const count = displayCounts[rowId] || ITEMS_PER_PAGE;
 		return items.slice(0, count);
@@ -77,16 +97,16 @@ const Search = ({onSelectItem, onSelectPerson}) => {
 
 	const visibleRows = useMemo(() => {
 		const rows = [];
-		if (results.movies.length > 0) rows.push({id: 'movies', title: $L('Movies'), items: getVisibleItems(results.movies, 'movies'), totalCount: results.movies.length, type: 'jellyfin'});
-		if (results.shows.length > 0) rows.push({id: 'shows', title: $L('TV Shows'), items: getVisibleItems(results.shows, 'shows'), totalCount: results.shows.length, type: 'jellyfin'});
-		if (results.episodes.length > 0) rows.push({id: 'episodes', title: $L('Episodes'), items: getVisibleItems(results.episodes, 'episodes'), totalCount: results.episodes.length, type: 'jellyfin'});
-		if (results.artists.length > 0) rows.push({id: 'artists', title: $L('Artists'), items: getVisibleItems(results.artists, 'artists'), totalCount: results.artists.length, type: 'jellyfin'});
-		if (results.albums.length > 0) rows.push({id: 'albums', title: $L('Albums'), items: getVisibleItems(results.albums, 'albums'), totalCount: results.albums.length, type: 'jellyfin'});
-		if (results.songs.length > 0) rows.push({id: 'songs', title: $L('Songs'), items: getVisibleItems(results.songs, 'songs'), totalCount: results.songs.length, type: 'jellyfin'});
-		if (results.people.length > 0) rows.push({id: 'people', title: $L('People'), items: getVisibleItems(results.people, 'people'), totalCount: results.people.length, type: 'jellyfin'});
-		if (results.jellyseerr.length > 0) rows.push({id: 'jellyseerr', title: $L('Jellyseerr'), items: getVisibleItems(results.jellyseerr, 'jellyseerr'), totalCount: results.jellyseerr.length, type: 'jellyseerr'});
+		if (filteredResults.movies.length > 0) rows.push({id: 'movies', title: $L('Movies'), items: getVisibleItems(filteredResults.movies, 'movies'), totalCount: filteredResults.movies.length, type: 'jellyfin'});
+		if (filteredResults.shows.length > 0) rows.push({id: 'shows', title: $L('TV Shows'), items: getVisibleItems(filteredResults.shows, 'shows'), totalCount: filteredResults.shows.length, type: 'jellyfin'});
+		if (filteredResults.episodes.length > 0) rows.push({id: 'episodes', title: $L('Episodes'), items: getVisibleItems(filteredResults.episodes, 'episodes'), totalCount: filteredResults.episodes.length, type: 'jellyfin'});
+		if (filteredResults.artists.length > 0) rows.push({id: 'artists', title: $L('Artists'), items: getVisibleItems(filteredResults.artists, 'artists'), totalCount: filteredResults.artists.length, type: 'jellyfin'});
+		if (filteredResults.albums.length > 0) rows.push({id: 'albums', title: $L('Albums'), items: getVisibleItems(filteredResults.albums, 'albums'), totalCount: filteredResults.albums.length, type: 'jellyfin'});
+		if (filteredResults.songs.length > 0) rows.push({id: 'songs', title: $L('Songs'), items: getVisibleItems(filteredResults.songs, 'songs'), totalCount: filteredResults.songs.length, type: 'jellyfin'});
+		if (filteredResults.people.length > 0) rows.push({id: 'people', title: $L('People'), items: getVisibleItems(filteredResults.people, 'people'), totalCount: filteredResults.people.length, type: 'jellyfin'});
+		if (filteredResults.jellyseerr.length > 0) rows.push({id: 'jellyseerr', title: $L('Jellyseerr'), items: getVisibleItems(filteredResults.jellyseerr, 'jellyseerr'), totalCount: filteredResults.jellyseerr.length, type: 'jellyseerr'});
 		return rows;
-	}, [results, getVisibleItems]);
+	}, [filteredResults, getVisibleItems]);
 
 	const loadMoreItems = useCallback((rowId) => {
 		setDisplayCounts(prev => ({
@@ -211,7 +231,14 @@ const Search = ({onSelectItem, onSelectPerson}) => {
 
 	const handleClearSearch = useCallback(() => {
 		setQuery('');
-		setResults({movies: [], shows: [], episodes: [], people: [], jellyseerr: []});
+		setResults({movies: [], shows: [], episodes: [], people: [], albums: [], artists: [], songs: [], jellyseerr: []});
+	}, []);
+
+	const handleAudioLanguageSelect = useCallback((e) => {
+		const languageKey = e.currentTarget?.dataset?.languageKey;
+		if (languageKey !== undefined) {
+			setSelectedAudioLanguage(languageKey);
+		}
 	}, []);
 
 	const handleCardClick = useCallback((e) => {
@@ -406,6 +433,24 @@ const Search = ({onSelectItem, onSelectPerson}) => {
 						</button>
 					)}
 				</div>
+				{hasResults && (
+					<div className={css.audioFilterBar}>
+						<div className={css.audioFilterLabel}>{$L('Audio Language')}</div>
+						<div className={css.audioFilterOptions}>
+							{audioLanguageOptions.map((option) => (
+								<SpottableDiv
+									key={option.key || 'any'}
+									className={`${css.audioFilterChip} ${selectedAudioLanguage === option.key ? css.audioFilterChipActive : ''}`}
+									onClick={handleAudioLanguageSelect}
+									data-language-key={option.key}
+								>
+									{option.key === '' ? $L('Any') : option.label}
+								</SpottableDiv>
+							))}
+						</div>
+						<div className={css.audioFilterHint}>{$L('Items without audio language metadata are still shown')}</div>
+					</div>
+				)}
 			</div>
 
 			<div className={css.searchResults}>
