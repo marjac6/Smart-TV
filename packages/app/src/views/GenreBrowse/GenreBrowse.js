@@ -143,7 +143,7 @@ const GenreBrowse = ({genre, libraryId, onSelectItem, backHandlerRef}) => {
 			// Check if this is a unified genre (from all servers) or a single-server genre
 			if (genre._unifiedGenre) {
 				// Query all servers for this genre
-				result = await connectionPool.getGenreItemsFromAllServers(params);
+				result = await connectionPool.getGenreItemsFromAllServers(params, genre);
 				newItems = result.Items || [];
 			} else if (genre._serverUrl) {
 				// Single cross-server genre

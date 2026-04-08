@@ -11,6 +11,7 @@ import LoadingSpinner from '../../components/LoadingSpinner';
 import {getImageUrl, getPrimaryImageId} from '../../utils/helpers';
 import {useStorage} from '../../hooks/useStorage';
 import {KEYS} from '../../utils/keys';
+import {getAudioLanguageOptions, matchesAudioLanguageFilter} from '../../utils/audioLanguageFilter';
 
 import css from './Favorites.module.less';
 
@@ -53,6 +54,7 @@ const [isLoading, setIsLoading] = useState(true);
 const [totalCount, setTotalCount] = useState(0);
 const [sortKey, setSortKey] = useState('SortName');
 const [typeFilterKey, setTypeFilterKey] = useState('all');
+const [selectedAudioLanguage, setSelectedAudioLanguage] = useState('');
 const [startLetter, setStartLetter] = useState(null);
 const [showSortPanel, setShowSortPanel] = useState(false);
 const [showSettingsPanel, setShowSettingsPanel] = useState(false);
@@ -101,6 +103,8 @@ const activeTypeFilter = useMemo(() => {
 return TYPE_FILTERS.find(t => t.key === typeFilterKey) || TYPE_FILTERS[0];
 }, [typeFilterKey]);
 
+const audioLanguageOptions = useMemo(() => getAudioLanguageOptions(allItems, true), [allItems]);
+
 const loadItems = useCallback(async (startIndex = 0, append = false) => {
 if (append && loadingMoreRef.current) return;
 if (append) loadingMoreRef.current = true;
@@ -109,7 +113,8 @@ try {
 if (unifiedMode) {
 const result = await connectionPool.getFavoritesFromAllServers();
 const typeFiltered = activeTypeFilter.key === 'all' ? result : result.filter(item => activeTypeFilter.types.split(',').includes(item.Type));
-const sorted = clientSideSort(typeFiltered, sortKey);
+	const audioFiltered = selectedAudioLanguage ? typeFiltered.filter(item => matchesAudioLanguageFilter(item, selectedAudioLanguage)) : typeFiltered;
+	const sorted = clientSideSort(audioFiltered, sortKey);
 setAllItems(sorted);
 setTotalCount(sorted.length);
 } else {
@@ -123,11 +128,14 @@ SortOrder: sortOption.order,
 StartIndex: startIndex,
 Limit: 150,
 EnableTotalRecordCount: true,
-Fields: 'ProductionYear,ImageTags,OfficialRating,CommunityRating,CriticRating,RunTimeTicks,UserData,SortName'
+Fields: 'ProductionYear,ImageTags,OfficialRating,CommunityRating,CriticRating,RunTimeTicks,UserData,SortName,MediaStreams,MediaSources'
 };
 
 const result = await api.getItems(params);
-const newItems = result.Items || [];
+	let newItems = result.Items || [];
+	if (selectedAudioLanguage) {
+		newItems = newItems.filter(item => matchesAudioLanguageFilter(item, selectedAudioLanguage));
+	}
 
 apiFetchIndexRef.current = append
 ? apiFetchIndexRef.current + newItems.length
@@ -141,7 +149,7 @@ console.error('Failed to load favorites:', err);
 setIsLoading(false);
 loadingMoreRef.current = false;
 }
-}, [api, sortKey, unifiedMode, clientSideSort, activeTypeFilter]);
+}, [api, sortKey, unifiedMode, clientSideSort, activeTypeFilter, selectedAudioLanguage]);
 
 useEffect(() => {
 setIsLoading(true);
@@ -150,7 +158,7 @@ loadingMoreRef.current = false;
 apiFetchIndexRef.current = 0;
 initialFocusDoneRef.current = false;
 loadItems(0, false);
-}, [sortKey, typeFilterKey, loadItems]);
+}, [sortKey, typeFilterKey, selectedAudioLanguage, loadItems]);
 
 useEffect(() => {
 if (items.length > 0 && !isLoading && !initialFocusDoneRef.current) {
@@ -277,6 +285,15 @@ setTimeout(() => Spotlight.focus('favorites-grid'), 100);
 }
 }, []);
 
+const handleAudioLanguageSelect = useCallback((ev) => {
+const key = ev.currentTarget?.dataset?.languageKey;
+if (key !== undefined) {
+	setSelectedAudioLanguage(key);
+	setShowSortPanel(false);
+	setTimeout(() => Spotlight.focus('favorites-grid'), 100);
+}
+}, []);
+
 const handleCycleImageSize = useCallback(() => {
 const sizes = ['small', 'medium', 'large'];
 const idx = sizes.indexOf(imageSize);
@@ -378,7 +395,10 @@ loading="lazy"
 const currentSort = SORT_OPTIONS.find(o => o.key === sortKey);
 const sortLabel = currentSort ? $L(currentSort.label) : $L('Name');
 const typeLabel = activeTypeFilter.key === 'all' ? '' : ` · ${$L(activeTypeFilter.label)}`;
-const statusText = $L('{count} favorites sorted by {sortLabel}').replace('{count}', totalCount).replace('{sortLabel}', sortLabel) + typeLabel;
+const audioLabel = selectedAudioLanguage
+	? ` · ${$L('Audio: {language}').replace('{language}', (audioLanguageOptions.find(option => option.key === selectedAudioLanguage)?.label || selectedAudioLanguage))}`
+	: '';
+const statusText = $L('{count} favorites sorted by {sortLabel}').replace('{count}', totalCount).replace('{sortLabel}', sortLabel) + typeLabel + audioLabel;
 
 return (
 <div className={css.page}>
@@ -497,6 +517,25 @@ spotlightId={`fav-filter-option-${index}`}
 <span className={css.sortOptionLabel}>{$L(filter.label)}</span>
 </SpottableButton>
 ))}
+</div>
+
+<div className={css.filterSection}>
+<div className={css.sortSectionLabel}>{$L('Audio Language')}</div>
+{audioLanguageOptions.map((option, index) => (
+<SpottableButton
+key={option.key || 'any'}
+className={`${css.sortOption} ${selectedAudioLanguage === option.key ? css.sortOptionActive : ''}`}
+onClick={handleAudioLanguageSelect}
+data-language-key={option.key}
+spotlightId={`fav-audio-option-${index}`}
+>
+<span className={css.radioCircle}>
+{selectedAudioLanguage === option.key && <span className={css.radioFill} />}
+</span>
+<span className={css.sortOptionLabel}>{option.key === '' ? $L('Any') : option.label}</span>
+</SpottableButton>
+))}
+<div className={css.filterHint}>{$L('Items without audio language metadata are still shown')}</div>
 </div>
 </SortPanelContainer>
 </div>

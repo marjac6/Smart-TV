@@ -7,6 +7,90 @@
 import * as multiServerManager from './multiServerManager';
 import {createApiForServer} from './jellyfinApi';
 
+const GENRE_ALIAS_TO_CANONICAL = {
+	'action': 'action',
+	'akcja': 'action',
+	'adventure': 'adventure',
+	'przygodowy': 'adventure',
+	'animation': 'animation',
+	'animacja': 'animation',
+	'comedy': 'comedy',
+	'comedies': 'comedy',
+	'komedia': 'comedy',
+	'komedie': 'comedy',
+	'crime': 'crime',
+	'kryminalny': 'crime',
+	'documentary': 'documentary',
+	'dokumentalny': 'documentary',
+	'drama': 'drama',
+	'dramat': 'drama',
+	'family': 'family',
+	'familijny': 'family',
+	'fantasy': 'fantasy',
+	'fantastyka': 'fantasy',
+	'history': 'history',
+	'historyczny': 'history',
+	'horror': 'horror',
+	'music': 'music',
+	'muzyczny': 'music',
+	'mystery': 'mystery',
+	'tajemnica': 'mystery',
+	'romance': 'romance',
+	'melodramat': 'romance',
+	'sciencefiction': 'science-fiction',
+	'scifi': 'science-fiction',
+	'fantastykanaukowa': 'science-fiction',
+	'thriller': 'thriller',
+	'thrillery': 'thriller',
+	'wojenny': 'war',
+	'war': 'war',
+	'western': 'western'
+};
+
+const GENRE_LABELS = {
+	'action': {'en-US': 'Action', pl: 'Akcja'},
+	'adventure': {'en-US': 'Adventure', pl: 'Przygodowe'},
+	'animation': {'en-US': 'Animation', pl: 'Animacja'},
+	'comedy': {'en-US': 'Comedy', pl: 'Komedie'},
+	'crime': {'en-US': 'Crime', pl: 'Kryminalne'},
+	'documentary': {'en-US': 'Documentary', pl: 'Dokumentalne'},
+	'drama': {'en-US': 'Drama', pl: 'Dramat'},
+	'family': {'en-US': 'Family', pl: 'Familijne'},
+	'fantasy': {'en-US': 'Fantasy', pl: 'Fantasy'},
+	'history': {'en-US': 'History', pl: 'Historyczne'},
+	'horror': {'en-US': 'Horror', pl: 'Horror'},
+	'music': {'en-US': 'Music', pl: 'Muzyczne'},
+	'mystery': {'en-US': 'Mystery', pl: 'Tajemnica'},
+	'romance': {'en-US': 'Romance', pl: 'Romans'},
+	'science-fiction': {'en-US': 'Science Fiction', pl: 'Fantastyka naukowa'},
+	'thriller': {'en-US': 'Thriller', pl: 'Thriller'},
+	'war': {'en-US': 'War', pl: 'Wojenne'},
+	'western': {'en-US': 'Western', pl: 'Western'}
+};
+
+const normalizeGenreName = (name = '') => name
+	.toString()
+	.normalize('NFD')
+	.replace(/[\u0300-\u036f]/g, '')
+	.toLowerCase()
+	.replace(/&/g, ' and ')
+	.replace(/[^a-z0-9]+/g, '')
+	.trim();
+
+const toCanonicalGenreKey = (name = '') => {
+	const normalized = normalizeGenreName(name);
+	return GENRE_ALIAS_TO_CANONICAL[normalized] || `raw:${normalized}`;
+};
+
+const toPreferredLanguage = (uiLanguage = 'en-US') => uiLanguage?.toLowerCase().startsWith('pl') ? 'pl' : 'en-US';
+
+const toDisplayGenreName = (canonicalKey, fallbackName, uiLanguage = 'en-US') => {
+	const labels = GENRE_LABELS[canonicalKey];
+	if (!labels) return fallbackName;
+	const preferredLanguage = toPreferredLanguage(uiLanguage);
+	return labels[preferredLanguage] || labels['en-US'] || fallbackName;
+};
+
 /**
  * Execute a request to all servers and aggregate results
  * @param {Function} apiFn - Function that takes (api, serverInfo) and returns a promise
@@ -341,7 +425,7 @@ export const getFavoritesFromAllServers = async () => {
 				IncludeItemTypes: 'Movie,Series,Episode,Person',
 				SortBy: 'SortName',
 				SortOrder: 'Ascending',
-				Fields: 'PrimaryImageAspectRatio,ProductionYear,ParentIndexNumber,IndexNumber,SeriesName'
+				Fields: 'PrimaryImageAspectRatio,ProductionYear,ParentIndexNumber,IndexNumber,SeriesName,MediaStreams,MediaSources'
 			});
 			return fetchResult.Items || [];
 		},
@@ -392,7 +476,7 @@ export const getApiForItem = (item) => {
  * @param {string} parentId - Optional library ID to filter by
  * @returns {Promise<Array>} Merged genres from all servers with item counts
  */
-export const getGenresFromAllServers = async (parentId = null) => {
+export const getGenresFromAllServers = async (parentId = null, uiLanguage = 'en-US') => {
 	const allGenres = await executeAll(
 		async (api) => {
 			const result = await api.getGenres(parentId);
@@ -403,20 +487,52 @@ export const getGenresFromAllServers = async (parentId = null) => {
 
 	const genreMap = new Map();
 	for (const genre of allGenres) {
-		const existing = genreMap.get(genre.Name);
+		if (!genre?.Name) continue;
+
+		const canonicalKey = toCanonicalGenreKey(genre.Name);
+		const existing = genreMap.get(canonicalKey);
 		if (existing) {
 			existing.ChildCount = (existing.ChildCount || 0) + (genre.ChildCount || 0);
+			existing._queryNames.add(genre.Name);
+			if (genre._serverId) {
+				if (!existing._serverGenreNames.has(genre._serverId)) {
+					existing._serverGenreNames.set(genre._serverId, new Set());
+				}
+				existing._serverGenreNames.get(genre._serverId).add(genre.Name);
+			}
 		} else {
-			genreMap.set(genre.Name, {
+			const serverGenreNames = new Map();
+			if (genre._serverId) {
+				serverGenreNames.set(genre._serverId, new Set([genre.Name]));
+			}
+			genreMap.set(canonicalKey, {
 				Id: genre.Id,
 				Name: genre.Name,
 				ChildCount: genre.ChildCount || 0,
-				_unifiedGenre: true
+				_unifiedGenre: true,
+				_canonicalKey: canonicalKey,
+				_queryNames: new Set([genre.Name]),
+				_serverGenreNames: serverGenreNames
 			});
 		}
 	}
 
-	return Array.from(genreMap.values());
+	return Array.from(genreMap.values()).map((genre) => {
+		const serverGenreNames = {};
+		for (const [serverId, names] of genre._serverGenreNames.entries()) {
+			serverGenreNames[serverId] = Array.from(names);
+		}
+
+		return {
+			Id: genre.Id,
+			Name: toDisplayGenreName(genre._canonicalKey, genre.Name, uiLanguage),
+			ChildCount: genre.ChildCount,
+			_unifiedGenre: true,
+			_canonicalKey: genre._canonicalKey,
+			_queryNames: Array.from(genre._queryNames),
+			_serverGenreNames: serverGenreNames
+		};
+	});
 };
 
 /**
@@ -424,7 +540,7 @@ export const getGenresFromAllServers = async (parentId = null) => {
  * @param {Object} params - Query parameters (Genres, IncludeItemTypes, etc.)
  * @returns {Promise<Object>} {Items: Array, TotalRecordCount: number}
  */
-export const getGenreItemsFromAllServers = async (params) => {
+export const getGenreItemsFromAllServers = async (params, genre = null) => {
 	const servers = await multiServerManager.getAllServersArray();
 
 	if (servers.length === 0) {
@@ -436,7 +552,14 @@ export const getGenreItemsFromAllServers = async (params) => {
 		servers.map(async (server) => {
 			try {
 				const api = createApiForServer(server.url, server.accessToken, server.userId);
-				const result = await api.getItems(params);
+				const scopedParams = {...params};
+				if (genre?._serverGenreNames && genre._serverGenreNames[server.serverId]?.length) {
+					scopedParams.Genres = genre._serverGenreNames[server.serverId].join(',');
+				} else if (genre?._queryNames?.length) {
+					scopedParams.Genres = genre._queryNames.join(',');
+				}
+
+				const result = await api.getItems(scopedParams);
 				const items = (result.Items || []).map(item => ({
 					...item,
 					_serverId: server.serverId,
