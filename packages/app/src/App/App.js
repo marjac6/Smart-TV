@@ -976,17 +976,20 @@ const AppContent = (props) => {
 	);
 };
 
-// Set ilib locale from stored settings before React renders
-// Both Tizen (localStorage) and webOS (DB8 with localStorage mirror) store
-// data under the 'moonfin_' prefix, so 'moonfin_settings' is reliable on
-// both platforms at module-evaluation time.
+let storedLocale = 'en-US';
 try {
 	const stored = JSON.parse(localStorage.getItem('moonfin_settings') || '{}');
-	const locale = stored.uiLanguage || 'en-US';
-	ilib.setLocale(locale);
-} catch (e) {
-	ilib.setLocale('en-US');
-}
+	storedLocale = stored.uiLanguage || 'en-US';
+} catch (e) { /* use default */ }
+
+// Pre-populate ilib.data with all locale strings so loadData() finds them
+// cached and skips synchronous XHR (which fails silently on Tizen).
+// ilib keys use underscores and path segments: pt-BR -> strings_pt_BR
+const localeContext = require.context('../../resources', true, /^\.[\/][a-z]{2}(-[A-Z]{2})?\/strings\.json$/);
+localeContext.keys().forEach((key) => {
+	const lang = key.split('/')[1].replace('-', '_').replace('/', '_');
+	ilib.data['strings_' + lang] = localeContext(key);
+});
 
 const AppBase = (props) => (
 	<SettingsProvider>
@@ -998,5 +1001,6 @@ const AppBase = (props) => (
 	</SettingsProvider>
 );
 
-const App = ThemeDecorator(AppBase);
+const AppThemed = ThemeDecorator(AppBase);
+const App = (props) => <AppThemed {...props} locale={storedLocale} />;
 export default App;
